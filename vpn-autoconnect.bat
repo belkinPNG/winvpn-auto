@@ -40,7 +40,7 @@ set "working_dir=%APPDATA%\vpn-autolaunch"
 if not exist "%working_dir%" mkdir "%working_dir%"
 
 :: Creating a new vpn.bat with the connect command
-set "batfile=%working_dir%\vpn.bat"
+set "bat_file=%working_dir%\vpn.bat"
 (
     echo @echo off
     echo powershell -Command "if ((Get-VpnConnection -Name '%selected_vpn%').ConnectionStatus -eq 'Connected') { exit 0 } else { exit 1 }"
@@ -48,29 +48,28 @@ set "batfile=%working_dir%\vpn.bat"
     echo     exit /b 0
     echo ^)
     echo rasdial "%selected_vpn%"
-) > "%batfile%"
-echo Created: %batfile%
+) > "%bat_file%"
+echo Created: %bat_file%
 
 :: Absolute path to vpn.bat
-for %%i in ("%batfile%") do set "batpath=%%~fpi%%~nxi"
+for %%i in ("%bat_file%") do set "batpath=%%~fpi%%~nxi"
 
 :: Creating a new connect.vbs file
-set "vbsfile=%working_dir%\connect.vbs"
-echo Set WshShell = CreateObject("WScript.Shell") > %vbsfile%
-echo WshShell.Run chr(34) ^& "%batfile%" ^& Chr(34), 0 >> %vbsfile%
-echo Set WshShell = Nothing >> %vbsfile%
-echo Created: %vbsfile%
+set "vbs_file=%working_dir%\connect.vbs"
+echo Set WshShell = CreateObject("WScript.Shell") > %vbs_file%
+echo WshShell.Run chr(34) ^& "%bat_file%" ^& Chr(34), 0 >> %vbs_file%
+echo Set WshShell = Nothing >> "%vbs_file%"
+echo Created: %vbs_file%
 
 :: Getting user SID
 for /f "tokens=2" %%u in ('whoami /user') do set "user_sid=%%u"
 
 :: Creating temporaty task XML-file
-set "taskXmlFile=%working_dir%\VPNTask.xml"
+set "task_xml_file=%working_dir%\VPNTask.xml"
 (
     echo ^<?xml version="1.0" encoding="UTF-16"?^>
     echo ^<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"^>
     echo   ^<RegistrationInfo^>
-    echo     ^<Date^>2024-09-29T14:40:53.0092209^</Date^>
     echo     ^<Author^>%COMPUTERNAME%\%USERNAME%^</Author^>
     echo     ^<URI^>\My tasks\VPN-autoconnect^</URI^>
     echo   ^</RegistrationInfo^>
@@ -114,26 +113,26 @@ set "taskXmlFile=%working_dir%\VPNTask.xml"
     echo   ^</Settings^>
     echo   ^<Actions Context="Author"^>
     echo     ^<Exec^>
-    echo       ^<Command^>%vbsfile%^</Command^>
+    echo       ^<Command^>%vbs_file%^</Command^>
     echo     ^</Exec^>
     echo   ^</Actions^>
     echo ^</Task^>
-) > "%taskXmlFile%"
-echo Created: %taskXmlFile%
+) > "%task_xml_file%"
+echo Created: %task_xml_file%
 
 :: Registering task in Task Scheduler
-set "taskpath=\My tasks\VPN-autoconnect"
-schtasks /delete /tn "%taskpath%" /f >nul 2>&1
-schtasks /create /xml "%taskXmlFile%" /tn "%taskpath%" >nul 2>&1
+set "task_path=\My tasks\VPN-autoconnect"
+schtasks /delete /tn "%task_path%" /f >nul 2>&1
+schtasks /create /xml "%task_xml_file%" /tn "%task_path%" >nul 2>&1
 if errorlevel 1 (
     echo Error: Failed to register the task. Check the XML format or permissions.
 ) else (
-    echo Task with path %taskpath% succesfully registered in Task ^Scheduler.
+    echo Task with path %task_path% succesfully registered in Task Scheduler.
 )
 
 if /i "%keepXML%"=="false" (
-    del %taskXmlFile%
-    echo Removed: %taskXmlFile%
+    del "%task_xml_file%"
+    echo Removed: %task_xml_file%
 )
 
 pause
